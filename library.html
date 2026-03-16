@@ -27,22 +27,16 @@
             <div id="view-library" class="view">
                 <!-- Cloud Sync Settings -->
                 <section class="builder-section glass-panel">
-                    <h2><i class="fa-brands fa-github"></i> Cloud Database Sync</h2>
+                    <h2><i class="fa-solid fa-server"></i> Cloud Database Sync</h2>
                     <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
-                        Back up your data for free by syncing directly to your GitHub repository's <code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px;">db.json</code> file.
+                        Back up your data for free by syncing directly to your secure Val Town database backend!
                     </p>
                     <div id="sync-status-msg" style="margin-bottom: 1rem; font-size: 0.85rem; padding: 0.5rem; border-radius: 4px;" class="hidden"></div>
                     
                     <form id="cloud-sync-form" class="workout-form">
-                        <div class="form-group row multi-col" style="align-items: flex-end; gap: 0.5rem;">
-                            <div class="input-wrapper" style="flex: 1;">
-                                <label for="github-repo">Repository (user/repo)</label>
-                                <input type="text" id="github-repo" placeholder="e.g. rehanch94/gym" autocomplete="off">
-                            </div>
-                            <div class="input-wrapper" style="flex: 2;">
-                                <label for="github-token">Personal Access Token (classic)</label>
-                                <input type="password" id="github-token" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
-                            </div>
+                        <div class="form-group">
+                            <label for="val-endpoint">Val Town API Endpoint URL</label>
+                            <input type="text" id="val-endpoint" placeholder="e.g. https://you-gymtrackerapi.web.val.run" autocomplete="off">
                         </div>
                         <div style="display: flex; gap: 1rem; margin-top: 1rem;">
                             <button type="submit" class="btn-primary" style="margin-top: 0; flex: 1;">

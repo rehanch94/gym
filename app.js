@@ -7,15 +7,7 @@ let stretchRoutines = JSON.parse(localStorage.getItem('gains_stretch_routines'))
 let stretchLog = JSON.parse(localStorage.getItem('gains_stretch_log')) || {};
 
 // Cloud Sync config
-let cloudConfig = JSON.parse(localStorage.getItem('gains_cloud_config')) || { repo: '', token: '', sha: null };
-
-// Hardcoded repository and PAT token settings
-if (!cloudConfig.token) {
-    cloudConfig.repo = 'rehanch94/gym';
-    // Obfuscated to prevent automatic GitHub secret revocation upon push
-    cloudConfig.token = atob('Z2hwX3hsWTlleVY1d2FIM1E2S2JJczJiUFZtVTRqbEFXSDJ0SkxTYQ==');
-    localStorage.setItem('gains_cloud_config', JSON.stringify(cloudConfig));
-}
+let cloudConfig = JSON.parse(localStorage.getItem('gains_cloud_config')) || { url: '' };
 
 const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 function getTodayStr() {
@@ -24,34 +16,26 @@ function getTodayStr() {
 }
 
 // ==========================================
-// CLOUD SYNC ENGINE (GitHub API)
+// CLOUD SYNC ENGINE (Val Town API webhook)
 // ==========================================
 async function syncFromCloud() {
-    if (!cloudConfig.repo || !cloudConfig.token) return false;
+    if (!cloudConfig.url) return false;
     
     try {
-        const response = await fetch(`https://api.github.com/repos/${cloudConfig.repo}/contents/db.json`, {
-            headers: {
-                'Authorization': `Bearer ${cloudConfig.token}`,
-                'Accept': 'application/vnd.github.v3+json'
-            }
+        const response = await fetch(cloudConfig.url, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
         });
         
-        if (!response.ok) throw new Error("Could not fetch db.json from GitHub");
+        if (!response.ok) throw new Error("Could not fetch database from endpoint");
         
         const data = await response.json();
-        cloudConfig.sha = data.sha; // Save file SHA for future updates
-        localStorage.setItem('gains_cloud_config', JSON.stringify(cloudConfig));
         
-        // Decode base64
-        const contentStr = decodeURIComponent(escape(atob(data.content)));
-        const db = JSON.parse(contentStr);
-        
-        // Apply cloud state locally
-        workouts = db.workouts || [];
-        workoutRoutines = db.workoutRoutines || [];
-        stretchRoutines = db.stretchRoutines || [];
-        stretchLog = db.stretchLog || {};
+        // Apply cloud state locally (if empty, defaults to empty arrays)
+        workouts = data.workouts || [];
+        workoutRoutines = data.workoutRoutines || [];
+        stretchRoutines = data.stretchRoutines || [];
+        stretchLog = data.stretchLog || {};
         
         // Save back to local storage
         localStorage.setItem('gains_workouts', JSON.stringify(workouts));
@@ -67,7 +51,7 @@ async function syncFromCloud() {
 }
 
 async function pushToCloud() {
-    if (!cloudConfig.repo || !cloudConfig.token) return;
+    if (!cloudConfig.url) return;
     
     const dbState = {
         workouts,
@@ -77,33 +61,18 @@ async function pushToCloud() {
     };
     
     try {
-        // Base64 encode JSON state
-        const contentBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(dbState, null, 2))));
-        
-        const body = {
-            message: "Gym Tracker: Auto-sync update",
-            content: contentBase64,
-            sha: cloudConfig.sha
-        };
-        
-        const response = await fetch(`https://api.github.com/repos/${cloudConfig.repo}/contents/db.json`, {
-            method: 'PUT',
+        const response = await fetch(cloudConfig.url, {
+            method: 'POST',
             headers: {
-                'Authorization': `Bearer ${cloudConfig.token}`,
-                'Accept': 'application/vnd.github.v3+json',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify(dbState)
         });
         
         if (!response.ok) {
-            console.error("Failed to push to GitHub", await response.text());
+            console.error("Failed to push to endpoint", await response.text());
             return;
         }
-        
-        const result = await response.json();
-        cloudConfig.sha = result.content.sha; // Update SHA
-        localStorage.setItem('gains_cloud_config', JSON.stringify(cloudConfig));
         
         console.log("Cloud sync push successful!");
     } catch (err) {
@@ -124,7 +93,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (synced) {
                 syncIcon.style.color = 'var(--accent-secondary)';
                 syncIcon.title = 'Cloud Sync Active';
-            } else if (cloudConfig.repo) {
+            } else if (cloudConfig.url) {
                 syncIcon.style.color = 'var(--danger)';
                 syncIcon.title = 'Cloud Sync Error';
             }
@@ -532,22 +501,19 @@ function initDashboard() {
 function initLibrary() {
     // Cloud Sync UI Logic
     const syncForm = document.getElementById('cloud-sync-form');
-    const repoInput = document.getElementById('github-repo');
-    const tokenInput = document.getElementById('github-token');
+    const urlInput = document.getElementById('val-endpoint');
     const msgEl = document.getElementById('sync-status-msg');
     const disconnectBtn = document.getElementById('btn-disconnect-sync');
     
-    if (cloudConfig.repo) {
-        repoInput.value = cloudConfig.repo;
-        tokenInput.value = cloudConfig.token;
+    if (cloudConfig.url) {
+        urlInput.value = cloudConfig.url;
         disconnectBtn.style.display = 'block';
     }
 
     syncForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const repo = repoInput.value.trim();
-        const token = tokenInput.value.trim();
-        if (!repo || !token) return;
+        const url = urlInput.value.trim();
+        if (!url) return;
         
         msgEl.className = '';
         msgEl.innerText = 'Testing connection...';
@@ -555,28 +521,30 @@ function initLibrary() {
         
         // Temporarily set and test pull
         const oldConfig = { ...cloudConfig };
-        cloudConfig = { repo, token, sha: null };
+        cloudConfig = { url };
+        localStorage.setItem('gains_cloud_config', JSON.stringify(cloudConfig));
         
         const success = await syncFromCloud();
         if (success) {
-            msgEl.innerText = `Successfully synced with ${repo}! Local data updated.`;
+            // Give local storage a moment to catch up from sync
+            msgEl.innerText = `Successfully synced! Local data updated.`;
             msgEl.style.color = 'var(--accent-secondary)';
             disconnectBtn.style.display = 'block';
             renderSavedLibrary(); // Re-render if new routines pulled
         } else {
             // Revert
             cloudConfig = oldConfig;
-            msgEl.innerText = `Connection failed. Check Repository format (user/repo), Token validity, and ensure db.json exists.`;
+            localStorage.setItem('gains_cloud_config', JSON.stringify(cloudConfig));
+            msgEl.innerText = `Connection failed. Check your Val Town Endpoint URL.`;
             msgEl.style.color = 'var(--danger)';
         }
     });
     
     disconnectBtn.addEventListener('click', () => {
-        if(confirm("Disconnect cloud sync? Your remote data will remain on GitHub, but local changes won't be pushed automatically.")) {
-            cloudConfig = { repo: '', token: '', sha: null };
+        if(confirm("Disconnect cloud sync? Your remote data will remain secure on Val Town, but local changes won't be pushed automatically.")) {
+            cloudConfig = { url: '' };
             localStorage.setItem('gains_cloud_config', JSON.stringify(cloudConfig));
-            repoInput.value = '';
-            tokenInput.value = '';
+            urlInput.value = '';
             disconnectBtn.style.display = 'none';
             msgEl.innerText = 'Disconnected.';
             msgEl.style.color = 'var(--text-secondary)';
