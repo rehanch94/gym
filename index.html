@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gains | Personal Gym Tracker</title>
+    <!-- Modern typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Dashboard Header / Sidebar equivalent -->
+        <header class="dashboard-header glass-panel" id="main-header">
+            <div class="logo">
+                <i class="fa-solid fa-dumbbell"></i>
+                <h1>Gains</h1>
+            </div>
+            
+            <div class="stats-overview">
+                <div class="stat-card">
+                    <span class="stat-value" id="total-workouts">0</span>
+                    <span class="stat-label">Total Workouts</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="total-sets">0</span>
+                    <span class="stat-label">Total Sets</span>
+                </div>
+                <div class="stat-card highlight">
+                    <span class="stat-value" id="total-volume">0</span>
+                    <span class="stat-label">Volume (lbs)</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- VIEW: DASHBOARD -->
+            <div id="view-dashboard" class="view">
+                
+                <!-- Start a Workout Section -->
+                <section class="start-workout-section glass-panel">
+                    <h2><i class="fa-solid fa-play"></i> Start Workout</h2>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="workout-routine-select">Select Routine</label>
+                        <select id="workout-routine-select" class="custom-select">
+                            <option value="">-- Choose a routine --</option>
+                        </select>
+                    </div>
+                    <button id="btn-start-workout" class="btn-primary" disabled>
+                        <span>Start Session</span>
+                        <i class="fa-solid fa-bolt"></i>
+                    </button>
+                    <p id="no-workouts-msg" class="text-muted hidden" style="margin-top: 1rem; font-size: 0.85rem;">No routines found. Go to Library to create one.</p>
+                </section>
+
+                <!-- Stretching Routine Section -->
+                <section class="stretching-section glass-panel">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-person-walking"></i> Today's Stretch</h2>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="stretch-routine-select">Select Routine</label>
+                        <select id="stretch-routine-select" class="custom-select">
+                            <option value="">-- Choose a routine --</option>
+                        </select>
+                    </div>
+                    <p id="no-stretches-msg" class="text-muted hidden" style="margin-top: 1rem; font-size: 0.85rem;">No routines found. Go to Library to create one.</p>
+
+                    <div class="stretching-list-container" id="dashboard-stretch-container" style="display: none;">
+                        <ul id="stretch-list" class="stretch-list">
+                            <!-- Stretches injected via JS -->
+                        </ul>
+                        <button id="btn-save-stretch" class="btn-primary btn-success hidden" style="margin-top: 1rem;">
+                            <i class="fa-solid fa-check"></i> Save Routine for Today
+                        </button>
+                        <div id="stretch-status" class="stretch-status hidden">
+                            <i class="fa-solid fa-circle-check"></i> Routine completed for today!
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Workout History Section -->
+                <section class="history-section glass-panel">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-clock-rotate-left"></i> Recent Activity</h2>
+                        <button id="clear-history" class="btn-icon" title="Clear History">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="history-list-container">
+                        <ul id="workout-list" class="workout-list">
+                            <!-- Workout items will be injected here via JS -->
+                            <div class="empty-state">
+                                <i class="fa-solid fa-box-open"></i>
+                                <p>No sets logged yet. Let's make some gains!</p>
+                            </div>
+                        </ul>
+                    </div>
+                </section>
+
+            </div> <!-- END VIEW: DASHBOARD -->
+
+
+            <!-- VIEW: ACTIVE SESSION (Hidden by default, shown during workout) -->
+            <div id="view-active-session" class="view hidden">
+                <div class="active-workout-header glass-panel sticky-header">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <h2 id="active-routine-name" style="margin-bottom: 0; font-size: 1.5rem;">Workout</h2>
+                        <button id="btn-cancel-workout" class="btn-icon" style="color: var(--danger); font-size: 1.25rem;">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Timer Overlay -->
+                    <div id="rest-timer-container" class="timer-container hidden">
+                        <div class="timer-ring">
+                            <span id="rest-timer-display" class="timer-text">00:00</span>
+                        </div>
+                        <p class="timer-label">REST</p>
+                        <button id="btn-skip-rest" class="btn-icon" style="color: var(--text-primary); background: rgba(255,255,255,0.1); border-radius: 4px; padding: 0.25rem 0.6rem; font-size: 0.8rem;">Skip</button>
+                    </div>
+                </div>
+
+                <div id="active-exercises-container" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+                    <!-- Exercise logs injected via JS -->
+                </div>
+
+                <button id="btn-finish-workout" class="btn-primary btn-success" style="margin-top: 2rem; margin-bottom: 2rem;">
+                    <i class="fa-solid fa-flag-checkered"></i> Finish & Save Workout
+                </button>
+            </div> <!-- END VIEW: ACTIVE SESSION -->
+
+        </main>
+        
+        <!-- Bottom Navigation Navbar (MPA Links) -->
+        <nav class="bottom-nav glass-panel" id="main-nav">
+            <a href="index.html" class="nav-btn active">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="library.html" class="nav-btn">
+                <i class="fa-solid fa-book-bookmark"></i>
+                <span>Library</span>
+            </a>
+        </nav>
+        
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

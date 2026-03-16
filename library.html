@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library | Gains Tracker</title>
+    <!-- Modern typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="dashboard-header glass-panel">
+            <div class="logo">
+                <i class="fa-solid fa-book-bookmark"></i>
+                <h1>Library</h1>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">Create and manage your templates</p>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <div id="view-library" class="view">
+                <!-- Workout Builder -->
+                <section class="builder-section glass-panel">
+                    <h2><i class="fa-solid fa-folder-plus"></i> Create Workout Routine</h2>
+                    <form id="create-workout-form" class="workout-form">
+                        <div class="form-group row" style="align-items: flex-end;">
+                            <div class="input-wrapper full-width">
+                                <label for="new-routine-name">Routine Name</label>
+                                <input type="text" id="new-routine-name" placeholder="e.g. Push Day" required autocomplete="off">
+                                <i class="fa-solid fa-tag input-icon"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="exercises-builder">
+                            <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: var(--text-secondary);">Exercises</h3>
+                            <ul id="builder-exercise-list" class="stretch-list" style="margin-bottom: 1rem;">
+                                <!-- Temporary list before saving -->
+                            </ul>
+                            
+                            <!-- Add Exercise Form -->
+                            <div class="form-group row multi-col" style="align-items: flex-end; gap: 0.5rem;">
+                                <div class="input-wrapper" style="flex: 2;">
+                                    <input type="text" id="builder-ex-name" placeholder="Exercise name" autocomplete="off" style="padding-left: 1rem;">
+                                </div>
+                                <div class="input-wrapper" style="flex: 1;">
+                                    <input type="number" id="builder-ex-rest" placeholder="Rest (s)" min="0" step="5" style="padding-left: 1rem;">
+                                </div>
+                                <button type="button" id="btn-add-builder-ex" class="btn-primary" style="margin-top: 0; padding: 0.85rem; width: auto;">Add</button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary btn-success" style="margin-top: 1rem;">
+                            Save Workout Routine
+                        </button>
+                    </form>
+                    
+                    <div class="saved-routines" style="margin-top: 2rem;">
+                        <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: var(--text-secondary);">Saved Workouts</h3>
+                        <ul id="saved-workouts-list" class="stretch-list"></ul>
+                    </div>
+                </section>
+
+                <!-- Stretching Builder -->
+                <section class="builder-section glass-panel">
+                    <h2><i class="fa-solid fa-person-walking"></i> Create Stretch Routine</h2>
+                    <form id="create-stretch-form" class="workout-form">
+                        <div class="form-group row" style="align-items: flex-end;">
+                            <div class="input-wrapper full-width">
+                                <label for="new-stretch-routine-name">Routine Name</label>
+                                <input type="text" id="new-stretch-routine-name" placeholder="e.g. Morning Flow" required autocomplete="off">
+                                <i class="fa-solid fa-tag input-icon"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="exercises-builder">
+                            <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: var(--text-secondary);">Stretches</h3>
+                            <ul id="builder-stretch-list" class="stretch-list" style="margin-bottom: 1rem;">
+                                <!-- Temporary list before saving -->
+                            </ul>
+                            
+                            <!-- Add Stretch Form -->
+                            <div class="form-group row multi-col" style="align-items: flex-end; flex-wrap: wrap; gap: 0.5rem;">
+                                <div class="input-wrapper full-width" style="margin-bottom: 0.5rem;">
+                                    <input type="text" id="builder-st-name" placeholder="Stretch name" autocomplete="off" style="padding-left: 1rem;">
+                                </div>
+                                <div class="input-wrapper" style="flex: 3;">
+                                    <input type="text" id="builder-st-desc" placeholder="Brief description (e.g. Hold 30s)" autocomplete="off" style="padding-left: 1rem;">
+                                </div>
+                                <button type="button" id="btn-add-builder-st" class="btn-primary" style="margin-top: 0; padding: 0.85rem; width: auto; flex: 1;">Add</button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary btn-success" style="margin-top: 1rem;">
+                            Save Stretch Routine
+                        </button>
+                    </form>
+                    
+                    <div class="saved-routines" style="margin-top: 2rem;">
+                        <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: var(--text-secondary);">Saved Stretches</h3>
+                        <ul id="saved-stretches-list" class="stretch-list"></ul>
+                    </div>
+                </section>
+            </div>
+
+        </main>
+        
+        <!-- Bottom Navigation Navbar (MPA Links) -->
+        <nav class="bottom-nav glass-panel" id="main-nav">
+            <a href="index.html" class="nav-btn">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="library.html" class="nav-btn active">
+                <i class="fa-solid fa-book-bookmark"></i>
+                <span>Library</span>
+            </a>
+        </nav>
+        
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
