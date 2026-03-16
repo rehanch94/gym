@@ -4,7 +4,10 @@
 let workouts = JSON.parse(localStorage.getItem('gains_workouts')) || [];
 let workoutRoutines = JSON.parse(localStorage.getItem('gains_workout_routines')) || [];
 let stretchRoutines = JSON.parse(localStorage.getItem('gains_stretch_routines')) || [];
-let stretchLog = JSON.parse(localStorage.getItem('gains_stretch_log')) || {}; // { 'YYYY-MM-DD': stretchRoutineId }
+let stretchLog = JSON.parse(localStorage.getItem('gains_stretch_log')) || {};
+
+// Cloud Sync config
+let cloudConfig = JSON.parse(localStorage.getItem('gains_cloud_config')) || { repo: '', token: '', sha: null };
 
 const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 function getTodayStr() {
@@ -13,11 +16,111 @@ function getTodayStr() {
 }
 
 // ==========================================
+// CLOUD SYNC ENGINE (GitHub API)
+// ==========================================
+async function syncFromCloud() {
+    if (!cloudConfig.repo || !cloudConfig.token) return false;
+    
+    try {
+        const response = await fetch(`https://api.github.com/repos/${cloudConfig.repo}/contents/db.json`, {
+            headers: {
+                'Authorization': `Bearer ${cloudConfig.token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+        
+        if (!response.ok) throw new Error("Could not fetch db.json from GitHub");
+        
+        const data = await response.json();
+        cloudConfig.sha = data.sha; // Save file SHA for future updates
+        localStorage.setItem('gains_cloud_config', JSON.stringify(cloudConfig));
+        
+        // Decode base64
+        const contentStr = decodeURIComponent(escape(atob(data.content)));
+        const db = JSON.parse(contentStr);
+        
+        // Apply cloud state locally
+        workouts = db.workouts || [];
+        workoutRoutines = db.workoutRoutines || [];
+        stretchRoutines = db.stretchRoutines || [];
+        stretchLog = db.stretchLog || {};
+        
+        // Save back to local storage
+        localStorage.setItem('gains_workouts', JSON.stringify(workouts));
+        localStorage.setItem('gains_workout_routines', JSON.stringify(workoutRoutines));
+        localStorage.setItem('gains_stretch_routines', JSON.stringify(stretchRoutines));
+        localStorage.setItem('gains_stretch_log', JSON.stringify(stretchLog));
+        
+        return true;
+    } catch (err) {
+        console.error("Cloud Sync Pull failed:", err);
+        return false;
+    }
+}
+
+async function pushToCloud() {
+    if (!cloudConfig.repo || !cloudConfig.token) return;
+    
+    const dbState = {
+        workouts,
+        workoutRoutines,
+        stretchRoutines,
+        stretchLog
+    };
+    
+    try {
+        // Base64 encode JSON state
+        const contentBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(dbState, null, 2))));
+        
+        const body = {
+            message: "Gym Tracker: Auto-sync update",
+            content: contentBase64,
+            sha: cloudConfig.sha
+        };
+        
+        const response = await fetch(`https://api.github.com/repos/${cloudConfig.repo}/contents/db.json`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${cloudConfig.token}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
+        
+        if (!response.ok) {
+            console.error("Failed to push to GitHub", await response.text());
+            return;
+        }
+        
+        const result = await response.json();
+        cloudConfig.sha = result.content.sha; // Update SHA
+        localStorage.setItem('gains_cloud_config', JSON.stringify(cloudConfig));
+        
+        console.log("Cloud sync push successful!");
+    } catch (err) {
+        console.error("Cloud sync push error:", err);
+    }
+}
+
+// ==========================================
 // INITIALIZATION ROUTER
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    // Determine which page we are on by checking for unique selectors
+document.addEventListener('DOMContentLoaded', async () => {
+    // Attempt cloud pull before initializing pages
+    const synced = await syncFromCloud();
+    
     if (document.getElementById('view-dashboard')) {
+        const syncIcon = document.getElementById('dashboard-sync-status');
+        if (syncIcon) {
+            if (synced) {
+                syncIcon.style.color = 'var(--accent-secondary)';
+                syncIcon.title = 'Cloud Sync Active';
+            } else if (cloudConfig.repo) {
+                syncIcon.style.color = 'var(--danger)';
+                syncIcon.title = 'Cloud Sync Error';
+            }
+        }
         initDashboard();
     } 
     if (document.getElementById('view-library')) {
@@ -111,6 +214,7 @@ function initDashboard() {
         localStorage.setItem('gains_workouts', JSON.stringify(workouts));
         updateDashboardStats();
         renderHistory();
+        pushToCloud();
     };
 
     clearHistoryBtn.addEventListener('click', () => {
@@ -120,6 +224,7 @@ function initDashboard() {
             localStorage.setItem('gains_workouts', JSON.stringify(workouts));
             updateDashboardStats();
             renderHistory();
+            pushToCloud();
         }
     });
 
@@ -223,6 +328,7 @@ function initDashboard() {
         stretchLog[getTodayStr()] = routineId;
         localStorage.setItem('gains_stretch_log', JSON.stringify(stretchLog));
         renderDashStretchUI(routineId);
+        pushToCloud();
     });
 
     // ACTIVE SESSION LOGIC
@@ -394,9 +500,10 @@ function initDashboard() {
             workouts.push(finalWorkout);
             localStorage.setItem('gains_workouts', JSON.stringify(workouts));
             
-            // Refresh dashboard history
+            // Refresh dashboard history & push
             updateDashboardStats();
             renderHistory();
+            pushToCloud();
             alert(`Workout saved! Logged ${setsLog.length} sets.`);
         }
         
@@ -415,6 +522,59 @@ function initDashboard() {
 // LIBRARY LOGIC (library.html)
 // ==========================================
 function initLibrary() {
+    // Cloud Sync UI Logic
+    const syncForm = document.getElementById('cloud-sync-form');
+    const repoInput = document.getElementById('github-repo');
+    const tokenInput = document.getElementById('github-token');
+    const msgEl = document.getElementById('sync-status-msg');
+    const disconnectBtn = document.getElementById('btn-disconnect-sync');
+    
+    if (cloudConfig.repo) {
+        repoInput.value = cloudConfig.repo;
+        tokenInput.value = cloudConfig.token;
+        disconnectBtn.style.display = 'block';
+    }
+
+    syncForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const repo = repoInput.value.trim();
+        const token = tokenInput.value.trim();
+        if (!repo || !token) return;
+        
+        msgEl.className = '';
+        msgEl.innerText = 'Testing connection...';
+        msgEl.style.color = 'var(--text-secondary)';
+        
+        // Temporarily set and test pull
+        const oldConfig = { ...cloudConfig };
+        cloudConfig = { repo, token, sha: null };
+        
+        const success = await syncFromCloud();
+        if (success) {
+            msgEl.innerText = `Successfully synced with ${repo}! Local data updated.`;
+            msgEl.style.color = 'var(--accent-secondary)';
+            disconnectBtn.style.display = 'block';
+            renderSavedLibrary(); // Re-render if new routines pulled
+        } else {
+            // Revert
+            cloudConfig = oldConfig;
+            msgEl.innerText = `Connection failed. Check Repository format (user/repo), Token validity, and ensure db.json exists.`;
+            msgEl.style.color = 'var(--danger)';
+        }
+    });
+    
+    disconnectBtn.addEventListener('click', () => {
+        if(confirm("Disconnect cloud sync? Your remote data will remain on GitHub, but local changes won't be pushed automatically.")) {
+            cloudConfig = { repo: '', token: '', sha: null };
+            localStorage.setItem('gains_cloud_config', JSON.stringify(cloudConfig));
+            repoInput.value = '';
+            tokenInput.value = '';
+            disconnectBtn.style.display = 'none';
+            msgEl.innerText = 'Disconnected.';
+            msgEl.style.color = 'var(--text-secondary)';
+        }
+    });
+
     let tempWorkoutExercises = [];
     let tempStretchExercises = [];
 
@@ -506,6 +666,7 @@ function initLibrary() {
         tempWorkoutExercises = [];
         renderTempBuilderEx();
         renderSavedLibrary();
+        pushToCloud();
     });
 
     createStretchForm.addEventListener('submit', (e) => {
@@ -522,6 +683,7 @@ function initLibrary() {
         tempStretchExercises = [];
         renderTempBuilderSt();
         renderSavedLibrary();
+        pushToCloud();
     });
 
     function renderSavedLibrary() {
@@ -563,6 +725,7 @@ function initLibrary() {
             localStorage.setItem('gains_stretch_routines', JSON.stringify(stretchRoutines));
         }
         renderSavedLibrary();
+        pushToCloud();
     };
 
     renderSavedLibrary();
